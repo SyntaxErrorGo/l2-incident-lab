@@ -154,8 +154,8 @@ curl -s http://localhost:9200/_cluster/health
 
 ## Документация
 
-- [Архитектура](docs/architecture.ru.md)
-- [Сценарии инцидентов](docs/incident-scenarios.ru.md)
+- [Архитектура](docs/architecture.md)
+- [Сценарии инцидентов](docs/incident-scenarios.md)
 - [L2-runbook](docs/l2-incident-runbook.md)
 - [Поиск логов в Kibana](docs/log-search.md)
 - [Баг-репорты и JQL](docs/bug-reports-and-jql.md)
