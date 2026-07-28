@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>L2 Incident Lab · Investigation Console</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-block">
+        <div class="brand-mark" aria-hidden="true">L2</div>
+        <div>
+          <p class="overline">INCIDENT OPERATIONS</p>
+          <h1>L2 INCIDENT LAB</h1>
+          <p class="subtitle">Incident investigation environment</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <div class="environment-state" id="environment-state">
+          <span class="status-dot status-neutral"></span>
+          <span>Checking environment</span>
+        </div>
+        <div class="mode-pill"><span>MODE</span><strong id="current-mode">loading</strong></div>
+        <button id="reset-environment" class="button button-danger-outline" type="button">
+          Reset Environment
+        </button>
+      </div>
+    </header>
+
+    <nav class="quick-links" aria-label="Observability tools">
+      <span class="quick-links-label">WORKSPACE</span>
+      <a data-tool-port="5601" target="_blank" rel="noreferrer">Open Kibana</a>
+      <a data-tool-port="3000" target="_blank" rel="noreferrer">Open Grafana</a>
+      <a data-tool-port="9090" target="_blank" rel="noreferrer">Open Prometheus</a>
+      <a href="/docs" target="_blank" rel="noreferrer">Open API Docs</a>
+    </nav>
+
+    <main class="dashboard">
+      <section class="panel infrastructure-panel" aria-labelledby="infra-title">
+        <div class="panel-heading compact-heading">
+          <div>
+            <p class="section-kicker">REQUEST PATH</p>
+            <h2 id="infra-title">Infrastructure overview</h2>
+          </div>
+          <p class="panel-note">Live checks use existing application endpoints only</p>
+        </div>
+        <div class="service-map">
+          <article class="service-node" data-service="client">
+            <div class="service-node-head"><span class="node-index">01</span><span class="service-status neutral">Local</span></div>
+            <strong>Client</strong><small>Browser session</small>
+          </article>
+          <span class="flow-arrow" aria-hidden="true">→</span>
+          <article class="service-node" data-service="nginx">
+            <div class="service-node-head"><span class="node-index">02</span><span class="service-status neutral">Serving</span></div>
+            <strong>Nginx</strong><small>Reverse proxy</small>
+          </article>
+          <span class="flow-arrow" aria-hidden="true">→</span>
+          <article class="service-node" data-service="backend">
+            <div class="service-node-head"><span class="node-index">03</span><span class="service-status neutral">Checking</span></div>
+            <strong>FastAPI</strong><small>Orders API</small>
+          </article>
+          <span class="flow-arrow" aria-hidden="true">→</span>
+          <article class="service-node" data-service="database">
+            <div class="service-node-head"><span class="node-index">04</span><span class="service-status neutral">Checking</span></div>
+            <strong>PostgreSQL</strong><small>Source of truth</small>
+          </article>
+          <div class="observability-rail">
+            <span>OBSERVABILITY</span>
+            <div><strong>Elasticsearch / Kibana</strong><small class="neutral-label">External tool · not health-checked</small></div>
+            <div><strong>Prometheus / Grafana</strong><small class="neutral-label">External tool · not health-checked</small></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel scenarios-panel" aria-labelledby="scenarios-title">
+        <div class="panel-heading">
+          <div>
+            <p class="section-kicker">CONTROL PLANE</p>
+            <h2 id="scenarios-title">Incident scenarios</h2>
+          </div>
+          <p class="panel-note">One active mode controls the real API path</p>
+        </div>
+        <div class="scenario-grid" id="scenario-grid">
+          <button class="scenario-card" type="button" data-mode="normal" data-severity="success">
+            <span class="scenario-code">NORMAL</span><strong>Healthy request path</strong><small>Expected HTTP 201</small>
+          </button>
+          <button class="scenario-card" type="button" data-mode="bad_gateway" data-severity="critical">
+            <span class="scenario-code">HTTP 502</span><strong>Bad Gateway</strong><small>Upstream connection refused</small>
+          </button>
+          <button class="scenario-card" type="button" data-mode="slow_api" data-severity="critical">
+            <span class="scenario-code">HTTP 504</span><strong>Gateway Timeout</strong><small>Nginx stops waiting at 3s</small>
+          </button>
+          <button class="scenario-card" type="button" data-mode="rate_limited" data-severity="warning">
+            <span class="scenario-code">HTTP 429</span><strong>Too Many Requests</strong><small>Retry-After: 30</small>
+          </button>
+          <button class="scenario-card" type="button" data-mode="api_error" data-severity="critical">
+            <span class="scenario-code">HTTP 500</span><strong>Application Error</strong><small>Backend rejects the order</small>
+          </button>
+          <button class="scenario-card" type="button" data-mode="invalid_status" data-severity="warning">
+            <span class="scenario-code">DATA</span><strong>Invalid Status</strong><small>HTTP 201 · status UNKNOWN</small>
+          </button>
+        </div>
+        <div class="scenario-explainer">
+          <span class="explainer-label">ACTIVE BEHAVIOUR</span>
+          <p id="scenario-description">Loading incident state…</p>
+        </div>
+      </section>
+
+      <div class="primary-grid">
+        <section class="panel order-panel" aria-labelledby="create-title">
+          <div class="panel-heading">
+            <div><p class="section-kicker">ACTION</p><h2 id="create-title">Create order</h2></div>
+            <span class="active-scenario-label">Scenario: <strong id="form-mode">—</strong></span>
+          </div>
+          <form id="order-form" novalidate>
+            <label for="customer-name">Customer name</label>
+            <input id="customer-name" name="customer_name" required maxlength="120" autocomplete="name" placeholder="e.g. Anna Petrova">
+            <span class="field-error" data-error-for="customer_name"></span>
+
+            <label for="product">Product</label>
+            <input id="product" name="product" required maxlength="200" placeholder="e.g. Support workstation">
+            <span class="field-error" data-error-for="product"></span>
+
+            <label for="quantity">Quantity</label>
+            <input id="quantity" name="quantity" type="number" min="1" max="10000" value="1" required>
+            <span class="field-error" data-error-for="quantity"></span>
+
+            <button id="submit-order" class="button button-primary submit-button" type="submit">
+              <span class="button-label">Create Order</span><span class="button-loader" aria-hidden="true"></span>
+            </button>
+          </form>
+          <p class="form-footnote">A unique X-Request-ID is generated in the browser and sent with the real API request.</p>
+        </section>
+
+        <section class="panel result-panel state-empty" id="result-panel" aria-labelledby="result-title">
+          <div class="panel-heading">
+            <div><p class="section-kicker">CENTRAL EVIDENCE</p><h2 id="result-title">Request result</h2></div>
+            <span class="result-outcome" id="result-outcome">NO REQUEST</span>
+          </div>
+          <div class="empty-result" id="empty-result">
+            <div class="empty-crosshair" aria-hidden="true"></div>
+            <strong>No request captured</strong>
+            <p>Create an order to inspect the real HTTP response and correlation data.</p>
+          </div>
+          <div class="result-content" id="result-content" hidden>
+            <div class="status-hero">
+              <div><span class="metric-label">HTTP STATUS</span><strong id="result-status">—</strong></div>
+              <div><span class="metric-label">STATUS TEXT</span><strong id="result-status-text">—</strong></div>
+              <div><span class="metric-label">LATENCY</span><strong id="result-latency">—</strong></div>
+            </div>
+            <dl class="request-facts">
+              <div><dt>Method</dt><dd id="result-method">—</dd></div>
+              <div><dt>Path</dt><dd id="result-path">—</dd></div>
+              <div><dt>Completed</dt><dd id="result-time">—</dd></div>
+              <div class="request-id-fact"><dt>Request ID</dt><dd><code id="result-request-id">—</code><button class="icon-button copy-button" data-copy-source="result-request-id" title="Copy request ID" type="button">COPY</button></dd></div>
+            </dl>
+            <div class="response-message"><span class="metric-label">RESPONSE / OPERATION</span><p id="result-message">—</p></div>
+            <div class="risk-notice" id="risk-notice" hidden></div>
+          </div>
+        </section>
+      </div>
+
+      <section class="panel investigation-panel" aria-labelledby="investigation-title">
+        <div class="panel-heading">
+          <div><p class="section-kicker">CORRELATION WORKFLOW</p><h2 id="investigation-title">L2 Investigation</h2></div>
+          <span class="guide-mode" id="guide-mode">NORMAL</span>
+        </div>
+        <div class="investigation-summary">
+          <article><span>Probable cause</span><p id="guide-cause">—</p></article>
+          <article><span>Where to look</span><p id="guide-where">—</p></article>
+          <article><span>What to verify</span><p id="guide-check">—</p></article>
+          <article><span>Expected evidence</span><p id="guide-expected">—</p></article>
+          <article><span>Retry risk</span><p id="guide-risk">—</p></article>
+        </div>
+        <div class="evidence-grid">
+          <article class="code-card">
+            <header><div><span>KIBANA</span><strong>KQL correlation</strong></div><button class="icon-button copy-button" data-copy-source="kql-code" type="button">COPY</button></header>
+            <pre><code id="kql-code">No request_id available. Create an order first.</code></pre>
+          </article>
+          <article class="code-card">
+            <header><div><span>POSTGRESQL</span><strong>Database verification</strong></div><button class="icon-button copy-button" data-copy-source="sql-code" type="button">COPY</button></header>
+            <pre><code id="sql-code">No request_id available. Create an order first.</code></pre>
+          </article>
+        </div>
+        <div class="secondary-filters" id="secondary-filters" hidden></div>
+      </section>
+
+      <div class="secondary-grid">
+        <section class="panel history-panel" aria-labelledby="history-title">
+          <div class="panel-heading">
+            <div><p class="section-kicker">LOCAL SESSION</p><h2 id="history-title">Recent requests</h2></div>
+            <button id="clear-history" class="text-button" type="button">Clear local history</button>
+          </div>
+          <p class="panel-note history-note">Stored in this browser only. This is not a replacement for Kibana.</p>
+          <div class="history-list" id="request-history"><div class="empty-list">No local requests yet.</div></div>
+        </section>
+
+        <section class="panel orders-panel" aria-labelledby="orders-title">
+          <div class="panel-heading">
+            <div><p class="section-kicker">POSTGRESQL VIEW</p><h2 id="orders-title">Latest orders</h2></div>
+            <button id="refresh-orders" class="text-button" type="button">Refresh</button>
+          </div>
+          <div class="orders-table-wrap">
+            <table>
+              <thead><tr><th>ID</th><th>Customer</th><th>Product</th><th>Qty</th><th>Status</th></tr></thead>
+              <tbody id="orders-body"><tr><td colspan="5" class="table-state">Loading orders…</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast-region" id="toast-region" role="status" aria-live="polite"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

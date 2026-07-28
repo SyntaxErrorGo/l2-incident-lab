@@ -1,0 +1,13 @@
+apiVersion: 1
+
+providers:
+  - name: L2 Incident Lab
+    orgId: 1
+    folder: L2 Incident Lab
+    type: file
+    disableDeletion: true
+    editable: true
+    updateIntervalSeconds: 10
+    options:
+      path: /var/lib/grafana/dashboards
+

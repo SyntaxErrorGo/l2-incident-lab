@@ -1,0 +1,70 @@
+filebeat.inputs:
+  - type: filestream
+    id: l2-incident-docker-logs
+    paths:
+      - /var/lib/docker/containers/*/*.log
+    parsers:
+      - container:
+          stream: all
+          format: docker
+
+processors:
+  - add_docker_metadata:
+      host: unix:///var/run/docker.sock
+
+  - drop_event:
+      when:
+        not:
+          or:
+            - contains:
+                container.name: l2-incident-lab-backend
+            - contains:
+                container.name: l2-incident-lab-nginx
+
+  - decode_json_fields:
+      fields: ["message"]
+      target: ""
+      overwrite_keys: true
+      add_error_key: true
+
+  - add_fields:
+      when:
+        contains:
+          container.name: l2-incident-lab-backend
+      target: ""
+      fields:
+        service: backend
+
+  - add_fields:
+      when:
+        contains:
+          container.name: l2-incident-lab-nginx
+      target: ""
+      fields:
+        service: nginx
+
+  - script:
+      lang: javascript
+      id: normalize_l2_incident_log
+      source: >
+        function process(event) {
+          if (!event.Get("timestamp")) {
+            event.Put("timestamp", event.Get("@timestamp"));
+          }
+          if (!event.Get("level")) {
+            event.Put("level", event.Get("stream") === "stderr" ? "ERROR" : "INFO");
+          }
+          var seconds = event.Get("duration_seconds");
+          if (seconds !== null) {
+            event.Put("duration_ms", Number(seconds) * 1000);
+          }
+        }
+
+setup.ilm.enabled: false
+setup.template.enabled: false
+
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]
+  index: "l2-incident-lab-%{+yyyy.MM.dd}"
+
+logging.level: info
